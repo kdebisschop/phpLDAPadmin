@@ -2117,17 +2117,17 @@ function password_types() {
     debug_log('Entered (%%)',1,0,__FILE__,__LINE__,__METHOD__,$fargs);
 
   return array(
-    ''=>'clear',
+//    ''=>'clear',
     'blowfish'=>'blowfish',
-    'crypt'=>'crypt',
-    'ext_des'=>'ext_des',
-    'md5'=>'md5',
-    'k5key'=>'k5key',
-    'md5crypt'=>'md5crypt',
-    'sha'=>'sha',
-    'smd5'=>'smd5',
-    'ssha'=>'ssha',
-    'sha512'=>'sha512',
+//    'crypt'=>'crypt',
+//    'ext_des'=>'ext_des',
+//    'md5'=>'md5',
+//    'k5key'=>'k5key',
+//    'md5crypt'=>'md5crypt',
+//    'sha'=>'sha',
+//    'smd5'=>'smd5',
+//    'ssha'=>'ssha',
+//    'sha512'=>'sha512',
   );
 }
 
@@ -2147,11 +2147,12 @@ function password_hash_pla($password_clear,$enc_type) {
 
   switch($enc_type) {
     case 'blowfish':
-      if (! defined('CRYPT_BLOWFISH') || CRYPT_BLOWFISH == 0)
-        error(_('Your system crypt library does not support blowfish encryption.'),'error','index.php');
+      if (! defined('PASSWORD_BCRYPT') || PASSWORD_BCRYPT === 0) {
+        error(_('Your system password_hash function does not support blowfish encryption.'), 'error', 'index.php');
+      }
 
-      # Hardcoded to second blowfish version and set number of rounds
-      $new_value = sprintf('{CRYPT}%s',crypt($password_clear,'$2a$12$'.random_salt(13)));
+      # Use PHP password_hash() function and increase cost to 13 from 12.
+      $new_value = sprintf('{CRYPT}%s', password_hash($password_clear, PASSWORD_BCRYPT, ['cost' =>13]));
 
       break;
 
@@ -2349,18 +2350,8 @@ function password_check($cryptedpassword,$plainpassword,$attribute='userpassword
     # Crypt passwords
     case 'crypt':
       # Check if it's blowfish crypt
-      if (preg_match('/^\\$2+/',$cryptedpassword)) {
-
-        # Make sure that web server supports blowfish crypt
-        if (! defined('CRYPT_BLOWFISH') || CRYPT_BLOWFISH == 0)
-          error(_('Your system crypt library does not support blowfish encryption.'),'error','index.php');
-
-        list($version,$rounds,$salt_hash) = explode('$',$cryptedpassword);
-
-        if (crypt($plainpassword,'$'.$version.'$'.$rounds.'$'.$salt_hash) == $cryptedpassword)
-          return true;
-        else
-          return false;
+      if (preg_match('/^[$]2[a-z][$]/', $cryptedpassword)) {
+        return password_verify($plainpassword, $cryptedpassword);
       }
 
       # Check if it's an crypted md5
